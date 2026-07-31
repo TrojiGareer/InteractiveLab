@@ -1,16 +1,38 @@
-# Node
-**/node_modules/
-**/.next/
+# =========================
+# Backend (Python)
+# =========================
+backend/venv/
+backend/.venv/
+__pycache__/
+*.py[cod]
 
-# Python
-**/venv/
-**/__pycache__/
-**/*.pyc
+# =========================
+# Frontend (Next.js)
+# =========================
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.*
+frontend/.yarn/*
+frontend/coverage/
+frontend/.next/
+frontend/out/
+frontend/build/
 
-# Environment
+# =========================
+# Environment variables
+# =========================
 .env
 .env.local
+backend/.env
+frontend/.env.local
 
-# OS
+# =========================
+# Misc, Debug & Editors
+# =========================
 .DS_Store
-Thumbs.db
+.vscode/
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
