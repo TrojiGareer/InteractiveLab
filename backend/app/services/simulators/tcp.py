@@ -1,7 +1,39 @@
 from typing import Any
 
 
-MAX_TCP_SEQUENCE_NUMBER = 2**32 - 1
+TCP_SEQUENCE_MODULUS = 2**32
+MAX_TCP_SEQUENCE_NUMBER = TCP_SEQUENCE_MODULUS - 1
+
+SUPPORTED_TCP_PARAMETERS = frozenset(
+    {
+        "latency_ms",
+        "client_initial_sequence",
+        "server_initial_sequence",
+    }
+)
+
+
+def _validate_parameter_names(
+    parameters: dict[str, Any],
+) -> None:
+    unsupported_parameters = sorted(
+        (
+            str(parameter)
+            for parameter in parameters
+            if parameter not in SUPPORTED_TCP_PARAMETERS
+        )
+    )
+
+    if unsupported_parameters:
+        formatted_parameters = ", ".join(
+            f"'{parameter}'"
+            for parameter in unsupported_parameters
+        )
+
+        raise ValueError(
+            "Unsupported TCP parameter(s): "
+            f"{formatted_parameters}."
+        )
 
 
 def _get_integer_parameter(
@@ -14,19 +46,32 @@ def _get_integer_parameter(
     value = parameters.get(name, default)
 
     if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError(f"'{name}' must be an integer.")
+        raise ValueError(
+            f"'{name}' must be an integer."
+        )
 
     if value < minimum or value > maximum:
         raise ValueError(
-            f"'{name}' must be between {minimum} and {maximum}."
+            f"'{name}' must be between "
+            f"{minimum} and {maximum}."
         )
 
     return value
 
 
+def _next_sequence_number(
+    sequence_number: int,
+) -> int:
+    return (
+        sequence_number + 1
+    ) % TCP_SEQUENCE_MODULUS
+
+
 def simulate_tcp_handshake(
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
+    _validate_parameter_names(parameters)
+
     latency_ms = _get_integer_parameter(
         parameters=parameters,
         name="latency_ms",
@@ -49,6 +94,14 @@ def simulate_tcp_handshake(
         default=5000,
         minimum=0,
         maximum=MAX_TCP_SEQUENCE_NUMBER,
+    )
+
+    client_next_sequence = _next_sequence_number(
+        client_sequence
+    )
+
+    server_next_sequence = _next_sequence_number(
+        server_sequence
     )
 
     events = [
@@ -75,12 +128,15 @@ def simulate_tcp_handshake(
             "destination": "client",
             "flags": ["SYN", "ACK"],
             "sequence_number": server_sequence,
-            "acknowledgment_number": client_sequence + 1,
+            "acknowledgment_number": (
+                client_next_sequence
+            ),
             "client_state": "SYN_SENT",
             "server_state": "SYN_RECEIVED",
             "description": (
-                "Server accepts the request and acknowledges "
-                "the client's sequence number."
+                "Server accepts the request and "
+                "acknowledges the client's "
+                "sequence number."
             ),
         },
         {
@@ -90,12 +146,15 @@ def simulate_tcp_handshake(
             "source": "client",
             "destination": "server",
             "flags": ["ACK"],
-            "sequence_number": client_sequence + 1,
-            "acknowledgment_number": server_sequence + 1,
+            "sequence_number": client_next_sequence,
+            "acknowledgment_number": (
+                server_next_sequence
+            ),
             "client_state": "ESTABLISHED",
             "server_state": "SYN_RECEIVED",
             "description": (
-                "Client acknowledges the server's sequence number."
+                "Client acknowledges the server's "
+                "sequence number."
             ),
         },
     ]

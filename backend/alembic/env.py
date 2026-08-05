@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.session import Base
-from app.models import SimulationRun
+from app.models import Scenario, SimulationRun
 
 
 config = context.config

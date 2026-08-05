@@ -1,11 +1,23 @@
-from datetime import datetime
-from typing import Any
+from __future__ import annotations
 
-from sqlalchemy import DateTime, Integer, String, func
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
+
+
+if TYPE_CHECKING:
+    from app.models.scenario import Scenario
 
 
 class SimulationRun(Base):
@@ -14,6 +26,15 @@ class SimulationRun(Base):
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
+    )
+
+    scenario_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "scenarios.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
     )
 
     protocol: Mapped[str] = mapped_column(
@@ -43,4 +64,8 @@ class SimulationRun(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+
+    scenario: Mapped[Scenario | None] = relationship(
+        back_populates="simulation_runs",
     )
