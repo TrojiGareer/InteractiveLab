@@ -1,16 +1,37 @@
+from dataclasses import dataclass
 from typing import Any
 
 
 TCP_SEQUENCE_MODULUS = 2**32
 MAX_TCP_SEQUENCE_NUMBER = TCP_SEQUENCE_MODULUS - 1
 
-SUPPORTED_TCP_PARAMETERS = frozenset(
-    {
-        "latency_ms",
-        "client_initial_sequence",
-        "server_initial_sequence",
-    }
-)
+
+@dataclass(frozen=True)
+class TcpParameterSpec:
+    default: int
+    minimum: int
+    maximum: int
+
+
+TCP_PARAMETER_SPECS: dict[str, TcpParameterSpec] = {
+    "latency_ms": TcpParameterSpec(
+        default=100,
+        minimum=0,
+        maximum=5000,
+    ),
+    "client_initial_sequence": TcpParameterSpec(
+        default=1000,
+        minimum=0,
+        maximum=MAX_TCP_SEQUENCE_NUMBER,
+    ),
+    "server_initial_sequence": TcpParameterSpec(
+        default=5000,
+        minimum=0,
+        maximum=MAX_TCP_SEQUENCE_NUMBER,
+    ),
+}
+
+SUPPORTED_TCP_PARAMETERS = frozenset(TCP_PARAMETER_SPECS)
 
 
 def _validate_parameter_names(
@@ -70,30 +91,40 @@ def _next_sequence_number(
 def simulate_tcp_handshake(
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
+    if not isinstance(parameters, dict):
+        raise ValueError("TCP parameters must be an object.")
+
     _validate_parameter_names(parameters)
 
+    latency_spec = TCP_PARAMETER_SPECS["latency_ms"]
     latency_ms = _get_integer_parameter(
         parameters=parameters,
         name="latency_ms",
-        default=100,
-        minimum=0,
-        maximum=5000,
+        default=latency_spec.default,
+        minimum=latency_spec.minimum,
+        maximum=latency_spec.maximum,
     )
 
+    client_sequence_spec = TCP_PARAMETER_SPECS[
+        "client_initial_sequence"
+    ]
     client_sequence = _get_integer_parameter(
         parameters=parameters,
         name="client_initial_sequence",
-        default=1000,
-        minimum=0,
-        maximum=MAX_TCP_SEQUENCE_NUMBER,
+        default=client_sequence_spec.default,
+        minimum=client_sequence_spec.minimum,
+        maximum=client_sequence_spec.maximum,
     )
 
+    server_sequence_spec = TCP_PARAMETER_SPECS[
+        "server_initial_sequence"
+    ]
     server_sequence = _get_integer_parameter(
         parameters=parameters,
         name="server_initial_sequence",
-        default=5000,
-        minimum=0,
-        maximum=MAX_TCP_SEQUENCE_NUMBER,
+        default=server_sequence_spec.default,
+        minimum=server_sequence_spec.minimum,
+        maximum=server_sequence_spec.maximum,
     )
 
     client_next_sequence = _next_sequence_number(

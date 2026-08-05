@@ -12,6 +12,7 @@ from app.schemas.protocol import (
     ProtocolParameterResponse,
     ProtocolResponse,
 )
+from app.services.simulators.tcp import TCP_PARAMETER_SPECS
 
 
 router = APIRouter(
@@ -33,9 +34,9 @@ TCP_PROTOCOL = ProtocolResponse(
             name="latency_ms",
             label="Network latency",
             data_type="integer",
-            default=100,
-            minimum=0,
-            maximum=5000,
+            default=TCP_PARAMETER_SPECS["latency_ms"].default,
+            minimum=TCP_PARAMETER_SPECS["latency_ms"].minimum,
+            maximum=TCP_PARAMETER_SPECS["latency_ms"].maximum,
             unit="ms",
             description=(
                 "One-way simulated network latency."
@@ -45,9 +46,15 @@ TCP_PROTOCOL = ProtocolResponse(
             name="client_initial_sequence",
             label="Client initial sequence",
             data_type="integer",
-            default=1000,
-            minimum=0,
-            maximum=4294967295,
+            default=TCP_PARAMETER_SPECS[
+                "client_initial_sequence"
+            ].default,
+            minimum=TCP_PARAMETER_SPECS[
+                "client_initial_sequence"
+            ].minimum,
+            maximum=TCP_PARAMETER_SPECS[
+                "client_initial_sequence"
+            ].maximum,
             description=(
                 "Initial TCP sequence number "
                 "selected by the client."
@@ -57,9 +64,15 @@ TCP_PROTOCOL = ProtocolResponse(
             name="server_initial_sequence",
             label="Server initial sequence",
             data_type="integer",
-            default=5000,
-            minimum=0,
-            maximum=4294967295,
+            default=TCP_PARAMETER_SPECS[
+                "server_initial_sequence"
+            ].default,
+            minimum=TCP_PARAMETER_SPECS[
+                "server_initial_sequence"
+            ].minimum,
+            maximum=TCP_PARAMETER_SPECS[
+                "server_initial_sequence"
+            ].maximum,
             description=(
                 "Initial TCP sequence number "
                 "selected by the server."
