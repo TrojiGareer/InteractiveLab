@@ -14,6 +14,7 @@ registered without a schema migration.
 - Docker Compose
 - For running tests outside Docker: Python 3.12 and PostgreSQL 17 (or
   compatible PostgreSQL with JSONB support)
+- For frontend-only development and validation: Node.js 22
 
 ## Configuration and startup
 
@@ -82,3 +83,26 @@ TEST_DATABASE_URL=postgresql+psycopg://interactive_test:interactive_test@127.0.0
 
 `TEST_DATABASE_URL` is deliberately separate from `DATABASE_URL`; the test
 fixture rejects a test URL that is identical to the development URL.
+
+## Frontend routes and validation
+
+- `/` is the TCP simulator for direct, persisted runs.
+- `/scenarios` manages reusable TCP parameter sets and can run a saved scenario.
+- `/simulations` provides immutable history and replay for every completed run.
+
+The frontend reads `NEXT_PUBLIC_API_URL` at build time and defaults to
+`http://localhost:8000`. Set it when the browser must reach a different API
+origin. Scenario data is editable, while every direct or scenario-triggered
+simulation is immutable historical data. Deleting a scenario preserves its
+previous runs.
+
+For frontend-only work:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+npm run lint
+npm run test
+npm run build
+```

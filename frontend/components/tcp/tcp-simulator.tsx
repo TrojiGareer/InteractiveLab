@@ -8,37 +8,29 @@ import {
 } from "react";
 
 import { HandshakeVisualizer } from "@/components/tcp/handshake-visualizer";
+import { PrimaryNavigation } from "@/components/primary-navigation";
 import {
   ApiError,
   createSimulation,
   getHealth,
   getProtocol,
 } from "@/lib/api-client";
+import {
+  createProtocolParameterValues,
+  validateProtocolParameterValues,
+} from "@/lib/protocol-parameters";
 import type {
   ProtocolDefinition,
   ProtocolParameter,
 } from "@/types/protocol";
 import type { SimulationRun } from "@/types/simulation";
 
-type ParameterValues = Record<string, string>;
-
-function createDefaultParameterValues(
-  protocol: ProtocolDefinition,
-): ParameterValues {
-  return Object.fromEntries(
-    protocol.parameters.map((parameter) => [
-      parameter.name,
-      String(parameter.default),
-    ]),
-  );
-}
-
 export function TcpSimulator() {
   const [protocol, setProtocol] =
     useState<ProtocolDefinition | null>(null);
 
   const [parameters, setParameters] =
-    useState<ParameterValues>({});
+    useState<Record<string, string>>({});
 
   const [simulation, setSimulation] =
     useState<SimulationRun | null>(null);
@@ -68,7 +60,7 @@ export function TcpSimulator() {
 
         setProtocol(protocolDefinition);
         setParameters(
-          createDefaultParameterValues(
+          createProtocolParameterValues(
             protocolDefinition,
           ),
         );
@@ -107,54 +99,11 @@ export function TcpSimulator() {
   function resetParameters() {
     if (protocol) {
       setParameters(
-        createDefaultParameterValues(protocol),
+        createProtocolParameterValues(protocol),
       );
     }
 
     setError(null);
-  }
-
-  function validateParameters(
-    protocolDefinition: ProtocolDefinition,
-  ): Record<string, number> | null {
-    const inputParameters: Record<
-      string,
-      number
-    > = {};
-
-    for (const parameter of protocolDefinition.parameters) {
-      const rawValue =
-        parameters[parameter.name] ?? "";
-
-      const numericValue = Number(rawValue);
-
-      if (
-        rawValue.trim() === "" ||
-        !Number.isInteger(numericValue)
-      ) {
-        setError(
-          `${parameter.label} must be a whole number.`,
-        );
-        return null;
-      }
-
-      if (
-        numericValue < parameter.minimum ||
-        numericValue > parameter.maximum
-      ) {
-        setError(
-          `${parameter.label} must be between ` +
-            `${parameter.minimum} and ` +
-            `${parameter.maximum}.`,
-        );
-        return null;
-      }
-
-      inputParameters[parameter.name] =
-        numericValue;
-    }
-
-    return inputParameters;
   }
 
   async function runSimulation(
@@ -171,10 +120,14 @@ export function TcpSimulator() {
       return;
     }
 
-    const inputParameters =
-      validateParameters(protocol);
+    const parameterValidation =
+      validateProtocolParameterValues(
+        protocol,
+        parameters,
+      );
 
-    if (!inputParameters) {
+    if (!parameterValidation.valid) {
+      setError(parameterValidation.error);
       return;
     }
 
@@ -184,7 +137,7 @@ export function TcpSimulator() {
       const completedSimulation =
         await createSimulation({
           protocol: protocol.id,
-          input_parameters: inputParameters,
+          input_parameters: parameterValidation.values,
         });
 
       setSimulation(completedSimulation);
@@ -236,9 +189,7 @@ export function TcpSimulator() {
                   : "API unavailable"}
             </span>
 
-            <Link href="/simulations">
-              Run history
-            </Link>
+            <PrimaryNavigation className="topbar-navigation" />
 
             <a href="#learn">
               How it works

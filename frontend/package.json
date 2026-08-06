@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-strip-types --experimental-default-type=module --test tests/api-client.test.ts tests/protocol-parameters.test.ts tests/ui-behavior.test.ts"
   },
   "dependencies": {
     "next": "16.2.12",

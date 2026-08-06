@@ -1,5 +1,12 @@
 import type { ProtocolDefinition } from "@/types/protocol";
 import type {
+  Scenario,
+  ScenarioCreateRequest,
+  ScenarioListResponse,
+  ScenarioPatchRequest,
+  ScenarioReplaceRequest,
+} from "@/types/scenario";
+import type {
   SimulationCreateRequest,
   SimulationListResponse,
   SimulationRun,
@@ -153,5 +160,83 @@ export function getSimulation(
 ): Promise<SimulationRun> {
   return apiRequest<SimulationRun>(
     `/api/v1/simulations/${simulationId}`,
+  );
+}
+
+export function listScenarios(
+  skip = 0,
+  limit = 10,
+): Promise<ScenarioListResponse> {
+  const query = new URLSearchParams({
+    skip: String(skip),
+    limit: String(limit),
+  });
+
+  return apiRequest<ScenarioListResponse>(
+    `/api/v1/scenarios?${query.toString()}`,
+  );
+}
+
+export function getScenario(
+  scenarioId: number,
+): Promise<Scenario> {
+  return apiRequest<Scenario>(
+    `/api/v1/scenarios/${scenarioId}`,
+  );
+}
+
+export function createScenario(
+  scenarioData: ScenarioCreateRequest,
+): Promise<Scenario> {
+  return apiRequest<Scenario>(
+    "/api/v1/scenarios",
+    {
+      method: "POST",
+      body: JSON.stringify(scenarioData),
+    },
+  );
+}
+
+export function replaceScenario(
+  scenarioId: number,
+  scenarioData: ScenarioReplaceRequest,
+): Promise<Scenario> {
+  return apiRequest<Scenario>(
+    `/api/v1/scenarios/${scenarioId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(scenarioData),
+    },
+  );
+}
+
+export function patchScenario(
+  scenarioId: number,
+  scenarioData: ScenarioPatchRequest,
+): Promise<Scenario> {
+  return apiRequest<Scenario>(
+    `/api/v1/scenarios/${scenarioId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(scenarioData),
+    },
+  );
+}
+
+export async function deleteScenario(
+  scenarioId: number,
+): Promise<void> {
+  await apiRequest<null>(
+    `/api/v1/scenarios/${scenarioId}`,
+    { method: "DELETE" },
+  );
+}
+
+export function runScenario(
+  scenarioId: number,
+): Promise<SimulationRun> {
+  return apiRequest<SimulationRun>(
+    `/api/v1/scenarios/${scenarioId}/run`,
+    { method: "POST" },
   );
 }

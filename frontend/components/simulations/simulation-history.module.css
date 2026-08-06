@@ -54,12 +54,12 @@
   text-decoration: none;
 }
 
-.navigation a:hover {
+.navigation a:hover,
+.navigation a[aria-current="page"] {
   color: #526ff6;
 }
 
-.navigation span {
-  color: #101932;
+.navigation a[aria-current="page"] {
   font-weight: 700;
 }
 

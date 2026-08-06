@@ -9,6 +9,7 @@ import type {
   SimulationRun,
   TcpHandshakeEvent,
 } from "@/types/simulation";
+import { getNextTraceStep } from "@/lib/trace-playback";
 
 type HandshakeVisualizerProps = {
   simulation: SimulationRun | null;
@@ -36,15 +37,15 @@ export function HandshakeVisualizer({
     }
 
     const timer = window.setTimeout(() => {
-      if (
-        selectedStep >=
-        result.events.length - 1
-      ) {
+      const nextStep = getNextTraceStep(
+        selectedStep,
+        result.events.length,
+      );
+
+      if (nextStep === null) {
         setIsPlaying(false);
       } else {
-        setSelectedStep(
-          (currentStep) => currentStep + 1,
-        );
+        setSelectedStep(nextStep);
       }
     }, 850);
 

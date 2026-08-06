@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { HandshakeVisualizer } from "@/components/tcp/handshake-visualizer";
+import { PrimaryNavigation } from "@/components/primary-navigation";
 import {
   getSimulation,
   listSimulations,
@@ -171,13 +172,7 @@ export function SimulationHistory() {
           <b>P</b> protocol<span>lab</span>
         </Link>
 
-        <nav className={styles.navigation}>
-          <Link href="/">
-            Simulator
-          </Link>
-
-          <span>Run history</span>
-        </nav>
+        <PrimaryNavigation className={styles.navigation} />
       </header>
 
       <section className={styles.intro}>
