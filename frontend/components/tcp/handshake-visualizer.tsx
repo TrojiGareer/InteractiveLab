@@ -1,85 +1,206 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useMemo, useState } from "react";
 
+import {
+  HostIllustration,
+  type ClientHostAppearance,
+  type ServerHostAppearance,
+} from "@/components/tcp/host-illustration";
+import { useTracePlayback } from "@/components/tcp/use-trace-playback";
+import {
+  createTraceTimeline,
+  type PlaybackMode,
+  type PlaybackStatus,
+} from "@/lib/trace-playback";
 import type {
   SimulationRun,
   TcpHandshakeEvent,
 } from "@/types/simulation";
-import { getNextTraceStep } from "@/lib/trace-playback";
 
 type HandshakeVisualizerProps = {
   simulation: SimulationRun | null;
   emptyMessage?: string;
+  autoPlay?: boolean;
+  showAppearanceControls?: boolean;
 };
+
+const CLIENT_APPEARANCES: Array<{
+  value: ClientHostAppearance;
+  label: string;
+}> = [
+  {
+    value: "desktop",
+    label: "Desktop",
+  },
+  {
+    value: "laptop",
+    label: "Laptop",
+  },
+];
+
+const SERVER_APPEARANCES: Array<{
+  value: ServerHostAppearance;
+  label: string;
+}> = [
+  {
+    value: "server-rack",
+    label: "Server rack",
+  },
+  {
+    value: "desktop",
+    label: "Desktop",
+  },
+];
+
+function getPlaybackStatusLabel(
+  status: PlaybackStatus,
+  event: TcpHandshakeEvent | undefined,
+): string {
+  if (status === "completed") {
+    return "Handshake playback completed.";
+  }
+
+  if (!event) {
+    return (
+      "Playback is ready when a simulation " +
+      "result is available."
+    );
+  }
+
+  const packetLabel = event.flags.join(" + ");
+
+  const action =
+    status === "playing"
+      ? "is moving"
+      : status === "paused"
+        ? "is paused"
+        : "is ready";
+
+  return (
+    `Step ${event.step}: ${packetLabel} ${action} ` +
+    `from ${event.source} to ${event.destination}.`
+  );
+}
+
+function getEndpointStates(
+  result: SimulationRun["result"],
+  event: TcpHandshakeEvent | undefined,
+  status: PlaybackStatus,
+) {
+  if (result && status === "completed") {
+    return result.final_state;
+  }
+
+  return {
+    client: event?.client_state ?? "CLOSED",
+    server: event?.server_state ?? "LISTEN",
+  };
+}
 
 export function HandshakeVisualizer({
   simulation,
   emptyMessage = (
     "Set your values, then send the first SYN packet."
   ),
+  autoPlay = false,
+  showAppearanceControls = false,
 }: HandshakeVisualizerProps) {
-  const [selectedStep, setSelectedStep] =
-    useState(0);
+  const [mode, setMode] =
+    useState<PlaybackMode>("demo");
 
-  const [isPlaying, setIsPlaying] =
-    useState(false);
+  const [
+    clientAppearance,
+    setClientAppearance,
+  ] = useState<ClientHostAppearance>("desktop");
+
+  const [
+    serverAppearance,
+    setServerAppearance,
+  ] = useState<ServerHostAppearance>("server-rack");
 
   const result = simulation?.result ?? null;
-  const event = result?.events[selectedStep];
 
-  useEffect(() => {
-    if (!isPlaying || !result) {
-      return;
+  const events = useMemo(
+    () => result?.events ?? [],
+    [result],
+  );
+
+  const timeline = useMemo(
+    () =>
+      createTraceTimeline(
+        events,
+        mode,
+        simulation?.input_parameters,
+      ),
+    [
+      events,
+      mode,
+      simulation?.input_parameters,
+    ],
+  );
+
+  const traceKey = simulation
+    ? [
+        simulation.id,
+        result?.events.length ?? 0,
+        result?.total_duration_ms ?? "empty",
+      ].join("-")
+    : null;
+
+  const playback = useTracePlayback({
+    traceKey,
+    timeline,
+    autoPlay,
+  });
+
+  const activeStep = Math.min(
+    playback.activeStep,
+    Math.max(events.length - 1, 0),
+  );
+
+  const event = events[activeStep];
+
+  const endpointStates = getEndpointStates(
+    result,
+    event,
+    playback.status,
+  );
+
+  const hasTrace = events.length > 0;
+  const isPlaying =
+    playback.status === "playing";
+
+  const packetProgress =
+    playback.status === "completed"
+      ? 1
+      : playback.progress;
+
+  const flightPosition = event
+    ? event.source === "client"
+      ? 5 + packetProgress * 90
+      : 95 - packetProgress * 90
+    : 5;
+
+  function selectMode(
+    nextMode: PlaybackMode,
+  ) {
+    if (!isPlaying) {
+      setMode(nextMode);
     }
-
-    const timer = window.setTimeout(() => {
-      const nextStep = getNextTraceStep(
-        selectedStep,
-        result.events.length,
-      );
-
-      if (nextStep === null) {
-        setIsPlaying(false);
-      } else {
-        setSelectedStep(nextStep);
-      }
-    }, 850);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [isPlaying, result, selectedStep]);
-
-  function selectStep(step: number) {
-    setSelectedStep(step);
-    setIsPlaying(false);
-  }
-
-  function playTrace() {
-    if (
-      !result ||
-      result.events.length === 0
-    ) {
-      return;
-    }
-
-    setSelectedStep(0);
-    setIsPlaying(true);
   }
 
   return (
-    <div
-      className={`visual-panel ${
-        result ? "has-result" : ""
-      }`}
+    <section
+      className={
+        `visual-panel ${result ? "has-result" : ""}`
+      }
+      aria-busy={isPlaying}
+      aria-label="TCP handshake playback"
     >
       <div className="visual-topline">
         <span className="live-label">
-          <i />{" "}
+          <i />
           {result
             ? "Run complete"
             : "Ready to simulate"}
@@ -92,34 +213,148 @@ export function HandshakeVisualizer({
         </span>
       </div>
 
+      <div className="playback-toolbar">
+        <div
+          className="playback-mode"
+          aria-label="Playback speed"
+        >
+          <span>Playback speed</span>
+
+          <div
+            role="group"
+            aria-label="Playback mode"
+          >
+            <button
+              type="button"
+              onClick={() => selectMode("demo")}
+              aria-pressed={mode === "demo"}
+              disabled={isPlaying}
+            >
+              Demo time
+            </button>
+
+            <button
+              type="button"
+              onClick={() => selectMode("real")}
+              aria-pressed={mode === "real"}
+              disabled={isPlaying}
+            >
+              Real time
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="playback-actions"
+          aria-label="Trace playback controls"
+        >
+          <button
+            type="button"
+            className="play-button"
+            onClick={playback.play}
+            disabled={!hasTrace || isPlaying}
+          >
+            {playback.status === "paused"
+              ? "Resume"
+              : playback.status === "completed"
+                ? "Replay"
+                : "Play trace"}
+          </button>
+
+          <button
+            type="button"
+            className="pause-button"
+            onClick={playback.pause}
+            disabled={!isPlaying}
+          >
+            Pause
+          </button>
+
+          <button
+            type="button"
+            className="replay-button"
+            onClick={playback.replay}
+            disabled={!hasTrace}
+          >
+            Restart
+          </button>
+        </div>
+      </div>
+
+      {showAppearanceControls && (
+        <fieldset className="appearance-controls">
+          <legend>Endpoint appearance</legend>
+
+          <AppearanceChooser
+            label="Client host"
+            options={CLIENT_APPEARANCES}
+            selected={clientAppearance}
+            onSelect={setClientAppearance}
+          />
+
+          <AppearanceChooser
+            label="Server host"
+            options={SERVER_APPEARANCES}
+            selected={serverAppearance}
+            onSelect={setServerAppearance}
+          />
+        </fieldset>
+      )}
+
       <div className="network-stage">
         <Node
           name="Client"
-          state={
-            event?.client_state ?? "CLOSED"
-          }
-          icon="↗"
+          state={endpointStates.client}
+          appearance={clientAppearance}
         />
 
-        <div
-          className="packet-lane"
-          aria-live="polite"
-        >
-          {result ? (
-            result.events.map(
-              (packet, index) => (
-                <Packet
-                  key={packet.step}
-                  event={packet}
-                  active={
-                    index === selectedStep
-                  }
-                  onClick={() =>
-                    selectStep(index)
-                  }
-                />
-              ),
-            )
+        <div className="packet-lane">
+          <div
+            className="connection-line"
+            aria-hidden="true"
+          />
+
+          {event ? (
+            <div
+              className={
+                `packet-flight ${
+                  event.source === "client"
+                    ? "packet-right"
+                    : "packet-left"
+                }`
+              }
+              style={{
+                left: `${flightPosition}%`,
+              }}
+            >
+              <span className="packet-step">
+                0{event.step}
+              </span>
+
+              <span className="packet-body">
+                <strong>
+                  {event.flags.join(" + ")}
+                </strong>
+
+                <small>
+                  seq {event.sequence_number}
+                  {event.acknowledgment_number !==
+                    null &&
+                    ` · ack ${
+                      event.acknowledgment_number
+                    }`}
+                </small>
+              </span>
+
+              <span
+                className="packet-arrow"
+                aria-hidden="true"
+              >
+                {event.source === "client"
+                  ? "→"
+                  : "←"}
+              </span>
+            </div>
           ) : (
             <p className="empty-stage">
               {emptyMessage}
@@ -129,12 +364,44 @@ export function HandshakeVisualizer({
 
         <Node
           name="Server"
-          state={
-            event?.server_state ?? "LISTEN"
-          }
-          icon="◆"
-          server
+          state={endpointStates.server}
+          appearance={serverAppearance}
         />
+      </div>
+
+      <div
+        className="trace-steps"
+        aria-label="TCP handshake steps"
+      >
+        {events.map((packet, index) => (
+          <button
+            key={
+              `${packet.step}-${packet.sent_at_ms}`
+            }
+            type="button"
+            className={
+              index === activeStep
+                ? "trace-step-active"
+                : ""
+            }
+            onClick={() =>
+              playback.selectStep(index)
+            }
+            aria-pressed={index === activeStep}
+            disabled={isPlaying}
+          >
+            <span>0{packet.step}</span>
+
+            <strong>
+              {packet.flags.join(" + ")}
+            </strong>
+
+            <small>
+              {packet.source} to{" "}
+              {packet.destination}
+            </small>
+          </button>
+        ))}
       </div>
 
       <div className="packet-details">
@@ -145,7 +412,9 @@ export function HandshakeVisualizer({
         <div>
           <p>
             {event
-              ? `${event.source} → ${event.destination}`
+              ? `${event.source} → ${
+                  event.destination
+                }`
               : "Awaiting simulation"}
           </p>
 
@@ -155,24 +424,20 @@ export function HandshakeVisualizer({
           </strong>
         </div>
 
-        {event && (
-          <button
-            type="button"
-            className="play-button"
-            onClick={playTrace}
-            disabled={isPlaying}
-          >
-            {isPlaying
-              ? "Playing…"
-              : "Play trace"}{" "}
-            <span>▶</span>
-          </button>
-        )}
+        <span
+          className="playback-status"
+          aria-live="polite"
+        >
+          {getPlaybackStatusLabel(
+            playback.status,
+            event,
+          )}
+        </span>
       </div>
 
       <div className="run-stats">
         <Stat
-          label="Total time"
+          label="Simulated total time"
           value={
             result
               ? `${result.total_duration_ms} ms`
@@ -184,7 +449,7 @@ export function HandshakeVisualizer({
           label="Packets"
           value={
             result
-              ? String(result.events.length)
+              ? String(events.length)
               : "—"
           }
         />
@@ -192,9 +457,60 @@ export function HandshakeVisualizer({
         <Stat
           label="Final state"
           value={
-            result?.final_state.client ?? "—"
+            result
+              ? `${result.final_state.client} / ${
+                  result.final_state.server
+                }`
+              : "—"
           }
         />
+      </div>
+
+      <p className="simulated-time-note">
+        Total time is simulated protocol time;
+        Demo time changes only the visual playback
+        speed.
+      </p>
+    </section>
+  );
+}
+
+function AppearanceChooser<T extends string>({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  options: Array<{
+    value: T;
+    label: string;
+  }>;
+  selected: T;
+  onSelect: (value: T) => void;
+}) {
+  return (
+    <div className="appearance-choice">
+      <span>{label}</span>
+
+      <div
+        role="group"
+        aria-label={label}
+      >
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={
+              selected === option.value
+            }
+            onClick={() =>
+              onSelect(option.value)
+            }
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -203,78 +519,28 @@ export function HandshakeVisualizer({
 function Node({
   name,
   state,
-  icon,
-  server = false,
+  appearance,
 }: {
-  name: string;
+  name: "Client" | "Server";
   state: string;
-  icon: string;
-  server?: boolean;
+  appearance:
+    | ClientHostAppearance
+    | ServerHostAppearance;
 }) {
   return (
     <div
-      className={`node ${
-        server
-          ? "node-server"
-          : "node-client"
-      }`}
+      className={
+        `node node-${name.toLowerCase()}`
+      }
     >
-      <span className="node-icon">
-        {icon}
-      </span>
+      <HostIllustration
+        endpoint={name}
+        appearance={appearance}
+      />
 
       <strong>{name}</strong>
       <small>{state}</small>
     </div>
-  );
-}
-
-function Packet({
-  event,
-  active,
-  onClick,
-}: {
-  event: TcpHandshakeEvent;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const fromClient =
-    event.source === "client";
-
-  return (
-    <button
-      type="button"
-      className={`packet ${
-        fromClient
-          ? "packet-right"
-          : "packet-left"
-      } ${
-        active ? "packet-active" : ""
-      }`}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      <span className="packet-step">
-        0{event.step}
-      </span>
-
-      <span className="packet-body">
-        <strong>
-          {event.flags.join(" + ")}
-        </strong>
-
-        <small>
-          seq {event.sequence_number}
-          {event.acknowledgment_number !==
-            null &&
-            ` · ack ${event.acknowledgment_number}`}
-        </small>
-      </span>
-
-      <span className="packet-arrow">
-        {fromClient ? "→" : "←"}
-      </span>
-    </button>
   );
 }
 

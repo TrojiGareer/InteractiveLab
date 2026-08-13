@@ -338,8 +338,9 @@ export function TcpSimulator() {
           </form>
 
           <HandshakeVisualizer
-            key={simulation?.id ?? "empty"}
             simulation={simulation}
+            autoPlay
+            showAppearanceControls
           />
         </div>
       </section>

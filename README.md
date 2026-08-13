@@ -96,6 +96,11 @@ origin. Scenario data is editable, while every direct or scenario-triggered
 simulation is immutable historical data. Deleting a scenario preserves its
 previous runs.
 
+TCP traces are animated only in the frontend after the backend has already
+calculated and saved a run. Demo time has a fixed readable presentation speed;
+Real time follows each run's simulated timing. Playback and endpoint appearance
+choices never change the stored simulation, scenario payload, or API response.
+
 For frontend-only work:
 
 ```bash

@@ -827,7 +827,7 @@ export function ScenarioManager() {
             </div>
             <Link href="/simulations">Open immutable history</Link>
           </div>
-          <HandshakeVisualizer key={lastRun.id} simulation={lastRun} />
+          <HandshakeVisualizer simulation={lastRun} autoPlay />
         </section>
       )}
 

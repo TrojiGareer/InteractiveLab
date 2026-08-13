@@ -371,7 +371,6 @@ export function SimulationHistory() {
               </div>
 
               <HandshakeVisualizer
-                key={selectedSimulation.id}
                 simulation={
                   selectedSimulation
                 }

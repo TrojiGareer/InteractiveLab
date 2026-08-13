@@ -10,6 +10,15 @@ The frontend is an interactive view of the backend's TCP three-way handshake sim
 
 Running a saved scenario creates a new immutable simulation run. Deleting a scenario removes only its editable configuration: existing historical runs remain available and lose their scenario association.
 
+## Handshake playback
+
+Every completed TCP run can be played step by step as SYN, SYN + ACK, and ACK. The frontend has Play trace, Pause, Resume, Restart, and replay controls; replay uses the saved run snapshot and does not request or persist another simulation.
+
+- **Demo time** uses a readable 700 ms presentation duration for each packet hop.
+- **Real time** uses the simulated event timings returned by the API (or the saved latency snapshot when timing is unavailable).
+
+The displayed **Simulated total time** always comes from the backend result, so Demo time never changes TCP values, timestamps, or persisted data. The direct simulator also includes local Client and Server host-appearance selectors. Those choices are visual-only, are not stored in local storage, and are never sent to the API.
+
 ## Environment
 
 `NEXT_PUBLIC_API_URL` is required when the API is not served from `http://localhost:8000`. It defaults to that local URL, and must be set to the public API URL before a cloud build.
