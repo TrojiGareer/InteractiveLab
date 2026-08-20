@@ -41,3 +41,5 @@ yarn-error.log*
 .pnpm-debug.log*
 protocol-working-tree-*.zip
 protocol-backup*.zip
+venv_test/
+*.zip
