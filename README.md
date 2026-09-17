@@ -5,6 +5,10 @@ simulations. The local architecture is:
 
 `Next.js frontend -> FastAPI API -> SQLAlchemy -> PostgreSQL`
 
+## 🚀 Live Environments
+- **Frontend (App):** [https://giving-luck-production.up.railway.app](https://giving-luck-production.up.railway.app)
+- **Backend (API Health):** [https://interactivelab-production.up.railway.app/health](https://interactivelab-production.up.railway.app/health)
+
 The first supported protocol is the TCP Three-Way Handshake. Protocol metadata
 is a static API catalog, not a database table, so additional protocols can be
 registered without a schema migration.
