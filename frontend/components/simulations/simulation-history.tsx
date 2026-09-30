@@ -6,8 +6,9 @@ import {
   useState,
 } from "react";
 
-import { HandshakeVisualizer } from "@/components/tcp/handshake-visualizer";
+import { AiAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { PrimaryNavigation } from "@/components/primary-navigation";
+import { HandshakeVisualizer } from "@/components/tcp/handshake-visualizer";
 import {
   getSimulation,
   listSimulations,
@@ -172,7 +173,9 @@ export function SimulationHistory() {
           <b>P</b> protocol<span>lab</span>
         </Link>
 
-        <PrimaryNavigation className={styles.navigation} />
+        <PrimaryNavigation
+          className={styles.navigation}
+        />
       </header>
 
       <section className={styles.intro}>
@@ -406,6 +409,11 @@ export function SimulationHistory() {
                   ))}
                 </div>
               </div>
+
+              <AiAssistantPanel
+                key={selectedSimulation.id}
+                simulation={selectedSimulation}
+              />
             </>
           ) : (
             <div
