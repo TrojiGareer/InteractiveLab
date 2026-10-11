@@ -23,6 +23,26 @@ class AIProvider(ABC):
         """Generate a text response from the AI provider."""
 
 
+class DemoAIProvider(AIProvider):
+    """Deterministic no-network provider used for demos and local development.
+
+    Simulation-aware demo responses are assembled by AIService. This provider
+    exists as a safe fallback for prompts that do not need structured data.
+    """
+
+    def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        del system_prompt, user_prompt
+        return (
+            "Demo AI mode is enabled. This response was generated locally; "
+            "no external AI provider or API key was used."
+        )
+
+
 class OpenAIProvider(AIProvider):
     """Minimal server-side OpenAI Responses API client."""
 
@@ -46,27 +66,19 @@ class OpenAIProvider(AIProvider):
         user_prompt: str,
     ) -> str:
         url = f"{self.base_url}/responses"
-
         payload: dict[str, Any] = {
             "model": self.model,
             "instructions": system_prompt,
             "input": user_prompt,
         }
-
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
         try:
-            with httpx.Client(
-                timeout=self.timeout_seconds,
-            ) as client:
-                response = client.post(
-                    url,
-                    headers=headers,
-                    json=payload,
-                )
+            with httpx.Client(timeout=self.timeout_seconds) as client:
+                response = client.post(url, headers=headers, json=payload)
         except httpx.TimeoutException as error:
             raise AIProviderError(
                 "The AI provider request timed out."
@@ -77,8 +89,10 @@ class OpenAIProvider(AIProvider):
             ) from error
 
         if response.status_code >= 400:
+            # Do not send raw provider error messages (which may contain
+            # request metadata) back to public API clients.
             raise AIProviderError(
-                self._format_provider_error(response)
+                f"The AI provider returned HTTP {response.status_code}."
             )
 
         try:
@@ -89,87 +103,47 @@ class OpenAIProvider(AIProvider):
             ) from error
 
         text = self._extract_text(response_payload)
-
         if not text:
             raise AIProviderError(
                 "The AI provider returned an empty response."
             )
-
         return text
 
     @staticmethod
-    def _extract_text(
-        payload: dict[str, Any],
-    ) -> str:
+    def _extract_text(payload: dict[str, Any]) -> str:
         output_text = payload.get("output_text")
-
         if isinstance(output_text, str) and output_text.strip():
             return output_text.strip()
 
         output = payload.get("output")
-
         if not isinstance(output, list):
             return ""
 
         text_parts: list[str] = []
-
         for item in output:
             if not isinstance(item, dict):
                 continue
-
             content = item.get("content")
-
             if not isinstance(content, list):
                 continue
-
             for content_item in content:
                 if not isinstance(content_item, dict):
                     continue
-
                 if content_item.get("type") != "output_text":
                     continue
-
                 text = content_item.get("text")
-
                 if isinstance(text, str) and text.strip():
                     text_parts.append(text.strip())
-
         return "\n\n".join(text_parts)
-
-    @staticmethod
-    def _format_provider_error(
-        response: httpx.Response,
-    ) -> str:
-        try:
-            payload = response.json()
-        except ValueError:
-            return (
-                "The AI provider returned an error "
-                f"(HTTP {response.status_code})."
-            )
-
-        error = payload.get("error")
-
-        if isinstance(error, dict):
-            message = error.get("message")
-
-            if isinstance(message, str) and message.strip():
-                return (
-                    "The AI provider returned an error: "
-                    f"{message.strip()}"
-                )
-
-        return (
-            "The AI provider returned an error "
-            f"(HTTP {response.status_code})."
-        )
 
 
 def create_ai_provider() -> AIProvider:
+    if settings.ai_mode == "demo":
+        return DemoAIProvider()
+
     if not settings.openai_api_key:
         raise AIProviderError(
-            "AI assistance is not configured. "
-            "Set OPENAI_API_KEY on the backend."
+            "AI provider mode is enabled but OPENAI_API_KEY is not configured."
         )
 
     return OpenAIProvider(
