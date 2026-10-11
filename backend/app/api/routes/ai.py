@@ -1,12 +1,7 @@
-from typing import Annotated
+import logging
+from typing import Annotated, Callable, TypeVar
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Path,
-    status,
-)
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AIProviderError
@@ -15,6 +10,10 @@ from app.db.session import get_db
 from app.models.simulation import SimulationRun
 from app.schemas.ai import (
     AIExplainResponse,
+    AIPracticeEvaluateRequest,
+    AIPracticeEvaluateResponse,
+    AIPracticeQuestionRequest,
+    AIPracticeQuestionResponse,
     AIPracticeRequest,
     AIPracticeResponse,
     AIReportRequest,
@@ -24,117 +23,63 @@ from app.schemas.ai import (
 )
 
 
-router = APIRouter(
-    prefix="/api/v1/ai",
-    tags=["AI"],
-)
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/v1/ai", tags=["AI"])
+T = TypeVar("T")
 
 
-def get_simulation_or_404(
-    db: Session,
-    simulation_id: int,
-) -> SimulationRun:
-    simulation = db.get(
-        SimulationRun,
-        simulation_id,
-    )
-
+def get_simulation_or_404(db: Session, simulation_id: int) -> SimulationRun:
+    simulation = db.get(SimulationRun, simulation_id)
     if simulation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                f"Simulation with id {simulation_id} "
-                "was not found."
-            ),
+            detail=f"Simulation with id {simulation_id} was not found.",
         )
-
     if simulation.status != "completed":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=(
-                "AI analysis is available only for "
-                "completed simulations."
-            ),
+            detail="AI analysis is available only for completed simulations.",
         )
-
     if simulation.result is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=(
-                "The simulation does not contain a result "
-                "that can be analyzed."
-            ),
+            detail="The simulation does not contain a result that can be analyzed.",
         )
-
     return simulation
 
 
-def run_ai_operation(
-    operation,
-):
+def run_ai_operation(operation: Callable[[], T]) -> T:
     try:
         return operation()
     except AIProviderError as error:
+        logger.warning("AI provider operation failed: %s", error)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error),
+            detail="The AI service is temporarily unavailable.",
         ) from error
 
 
-@router.post(
-    "/explain/{simulation_id}",
-    response_model=AIExplainResponse,
-)
+@router.post("/explain/{simulation_id}", response_model=AIExplainResponse)
 def explain_simulation(
-    simulation_id: Annotated[
-        int,
-        Path(ge=1),
-    ],
+    simulation_id: Annotated[int, Path(ge=1)],
     db: Annotated[Session, Depends(get_db)],
-    ai_service: Annotated[
-        AIService,
-        Depends(get_ai_service),
-    ],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
 ):
-    simulation = get_simulation_or_404(
-        db=db,
-        simulation_id=simulation_id,
-    )
-
-    content = run_ai_operation(
-        lambda: ai_service.explain(simulation)
-    )
-
-    return AIExplainResponse(
-        simulation_id=simulation.id,
-        content=content,
-    )
+    simulation = get_simulation_or_404(db, simulation_id)
+    content = run_ai_operation(lambda: ai_service.explain(simulation))
+    return AIExplainResponse(simulation_id=simulation.id, content=content)
 
 
-@router.post(
-    "/troubleshoot",
-    response_model=AITroubleshootResponse,
-)
+@router.post("/troubleshoot", response_model=AITroubleshootResponse)
 def troubleshoot_simulation(
     request: AITroubleshootRequest,
     db: Annotated[Session, Depends(get_db)],
-    ai_service: Annotated[
-        AIService,
-        Depends(get_ai_service),
-    ],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
 ):
-    simulation = get_simulation_or_404(
-        db=db,
-        simulation_id=request.simulation_id,
-    )
-
+    simulation = get_simulation_or_404(db, request.simulation_id)
     content = run_ai_operation(
-        lambda: ai_service.troubleshoot(
-            simulation,
-            request.problem_description,
-        )
+        lambda: ai_service.troubleshoot(simulation, request.problem_description)
     )
-
     return AITroubleshootResponse(
         simulation_id=simulation.id,
         content=content,
@@ -142,30 +87,17 @@ def troubleshoot_simulation(
     )
 
 
-@router.post(
-    "/practice",
-    response_model=AIPracticeResponse,
-)
+@router.post("/practice", response_model=AIPracticeResponse)
 def practice_simulation(
     request: AIPracticeRequest,
     db: Annotated[Session, Depends(get_db)],
-    ai_service: Annotated[
-        AIService,
-        Depends(get_ai_service),
-    ],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
 ):
-    simulation = get_simulation_or_404(
-        db=db,
-        simulation_id=request.simulation_id,
-    )
-
+    """Legacy batch endpoint retained for current clients."""
+    simulation = get_simulation_or_404(db, request.simulation_id)
     content = run_ai_operation(
-        lambda: ai_service.practice(
-            simulation,
-            request.question_count,
-        )
+        lambda: ai_service.practice(simulation, request.question_count)
     )
-
     return AIPracticeResponse(
         simulation_id=simulation.id,
         content=content,
@@ -173,31 +105,48 @@ def practice_simulation(
     )
 
 
-@router.post(
-    "/report",
-    response_model=AIReportResponse,
-)
+@router.post("/practice/question", response_model=AIPracticeQuestionResponse)
+def generate_practice_question(
+    request: AIPracticeQuestionRequest,
+    db: Annotated[Session, Depends(get_db)],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+):
+    simulation = get_simulation_or_404(db, request.simulation_id)
+    result = run_ai_operation(
+        lambda: ai_service.practice_question(simulation, request.level)
+    )
+    return AIPracticeQuestionResponse(**result)
+
+
+@router.post("/practice/evaluate", response_model=AIPracticeEvaluateResponse)
+def evaluate_practice_answer(
+    request: AIPracticeEvaluateRequest,
+    db: Annotated[Session, Depends(get_db)],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+):
+    simulation = get_simulation_or_404(db, request.simulation_id)
+    try:
+        result = ai_service.evaluate_practice(
+            simulation=simulation,
+            question_id=request.question_id,
+            answer=request.answer,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+    return AIPracticeEvaluateResponse(**result)
+
+
+@router.post("/report", response_model=AIReportResponse)
 def generate_report(
     request: AIReportRequest,
     db: Annotated[Session, Depends(get_db)],
-    ai_service: Annotated[
-        AIService,
-        Depends(get_ai_service),
-    ],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
 ):
-    simulation = get_simulation_or_404(
-        db=db,
-        simulation_id=request.simulation_id,
-    )
-
+    simulation = get_simulation_or_404(db, request.simulation_id)
     content = run_ai_operation(
-        lambda: ai_service.report(
-            simulation,
-            request.analysis,
-        )
+        lambda: ai_service.report(simulation, request.analysis)
     )
-
-    return AIReportResponse(
-        simulation_id=simulation.id,
-        content=content,
-    )
+    return AIReportResponse(simulation_id=simulation.id, content=content)
