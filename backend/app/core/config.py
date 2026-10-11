@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,7 +9,18 @@ ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
 
 class Settings(BaseSettings):
     database_url: str
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    cors_origins: str = (
+        "http://localhost:3000,"
+        "http://127.0.0.1:3000"
+    )
+
+    # Demo mode is safe to use locally and on Railway without a paid API key.
+    ai_mode: Literal["demo", "provider"] = "demo"
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-5-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_timeout_seconds: float = 30.0
 
     model_config = SettingsConfigDict(
         env_file=ROOT_ENV_FILE,
