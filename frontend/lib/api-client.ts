@@ -1,3 +1,11 @@
+
+import type {
+  AiExplainResponse,
+  AiTroubleshootRequest,
+  AiTroubleshootResponse,
+  AiReportRequest,
+  AiReportResponse,
+} from "@/types/ai";
 import type { ProtocolDefinition } from "@/types/protocol";
 import type {
   Scenario,
@@ -238,5 +246,42 @@ export function runScenario(
   return apiRequest<SimulationRun>(
     `/api/v1/scenarios/${scenarioId}/run`,
     { method: "POST" },
+  );
+}
+
+// AI Network Analysis Assistant
+
+export function explainSimulation(
+  simulationId: number,
+): Promise<AiExplainResponse> {
+  return apiRequest<AiExplainResponse>(
+    `/api/v1/ai/explain/${simulationId}`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export function troubleshootSimulation(
+  request: AiTroubleshootRequest,
+): Promise<AiTroubleshootResponse> {
+  return apiRequest<AiTroubleshootResponse>(
+    "/api/v1/ai/troubleshoot",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+  );
+}
+
+export function generateAiReport(
+  request: AiReportRequest,
+): Promise<AiReportResponse> {
+  return apiRequest<AiReportResponse>(
+    "/api/v1/ai/report",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
   );
 }
