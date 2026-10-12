@@ -1,7 +1,13 @@
+
 "use client";
 
 import { useState } from "react";
 
+import type {
+  AiPracticeEvaluateResponse,
+  AiPracticeQuestionResponse,
+  PracticeLevel,
+} from "@/types/ai";
 import type { SimulationRun } from "@/types/simulation";
 
 import styles from "./ai-assistant-panel.module.css";
@@ -12,37 +18,25 @@ type AssistantMode =
   | "report"
   | "questions";
 
-type PracticeLevel =
-  | "beginner"
-  | "intermediate"
-  | "interview";
-
 type AiAssistantPanelProps = {
   simulation: SimulationRun;
-
-  onExplain?: (
-    simulationId: number,
-  ) => Promise<string>;
-
+  onExplain?: (simulationId: number) => Promise<string>;
   onTroubleshoot?: (
     simulationId: number,
     problemDescription: string,
   ) => Promise<string>;
-
   onGenerateReport?: (
     simulationId: number,
   ) => Promise<string>;
-
   onGenerateQuestion?: (
     simulationId: number,
     level: PracticeLevel,
-  ) => Promise<string>;
-
+  ) => Promise<AiPracticeQuestionResponse>;
   onEvaluateAnswer?: (
     simulationId: number,
-    question: string,
+    questionId: string,
     answer: string,
-  ) => Promise<string>;
+  ) => Promise<AiPracticeEvaluateResponse>;
 };
 
 export function AiAssistantPanel({
@@ -59,77 +53,70 @@ export function AiAssistantPanel({
   const [explanation, setExplanation] =
     useState<string | null>(null);
 
-  const [
-    troubleshootingResult,
-    setTroubleshootingResult,
-  ] = useState<string | null>(null);
+  const [troubleshootingResult, setTroubleshootingResult] =
+    useState<string | null>(null);
 
   const [report, setReport] =
     useState<string | null>(null);
 
-  const [
-    problemDescription,
-    setProblemDescription,
-  ] = useState("");
+  const [problemDescription, setProblemDescription] =
+    useState("");
 
   const [practiceLevel, setPracticeLevel] =
     useState<PracticeLevel>("beginner");
 
   const [question, setQuestion] =
-    useState<string | null>(null);
+    useState<AiPracticeQuestionResponse | null>(null);
 
-  const [answer, setAnswer] =
-    useState("");
+  const [answer, setAnswer] = useState("");
 
   const [feedback, setFeedback] =
-    useState<string | null>(null);
+    useState<AiPracticeEvaluateResponse | null>(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [isLoading, setIsLoading] =
-    useState(false);
-
-  const canExplain =
-    typeof onExplain === "function";
-
+  const canExplain = typeof onExplain === "function";
   const canTroubleshoot =
     typeof onTroubleshoot === "function";
-
   const canGenerateReport =
     typeof onGenerateReport === "function";
-
   const canGenerateQuestion =
     typeof onGenerateQuestion === "function";
-
   const canEvaluateAnswer =
     typeof onEvaluateAnswer === "function";
 
   function selectMode(mode: AssistantMode) {
+    if (isLoading) {
+      return;
+    }
     setActiveMode(mode);
     setError(null);
   }
 
+  function changePracticeLevel(level: PracticeLevel) {
+    setPracticeLevel(level);
+    setQuestion(null);
+    setAnswer("");
+    setFeedback(null);
+    setError(null);
+  }
+
   async function explainRun() {
-    if (!onExplain) {
-      return;
-    }
+    if (!onExplain || isLoading) return;
 
     setIsLoading(true);
     setError(null);
     setExplanation(null);
 
     try {
-      const result = await onExplain(
-        simulation.id,
-      );
-
+      const result = await onExplain(simulation.id);
       setExplanation(result);
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Could not generate an AI explanation.",
+          : "Could not generate an explanation.",
       );
     } finally {
       setIsLoading(false);
@@ -137,12 +124,9 @@ export function AiAssistantPanel({
   }
 
   async function troubleshootRun() {
-    if (!onTroubleshoot) {
-      return;
-    }
+    if (!onTroubleshoot || isLoading) return;
 
-    const trimmedDescription =
-      problemDescription.trim();
+    const trimmedDescription = problemDescription.trim();
 
     if (!trimmedDescription) {
       setError(
@@ -160,7 +144,6 @@ export function AiAssistantPanel({
         simulation.id,
         trimmedDescription,
       );
-
       setTroubleshootingResult(result);
     } catch (requestError) {
       setError(
@@ -174,20 +157,14 @@ export function AiAssistantPanel({
   }
 
   async function generateReport() {
-    if (!onGenerateReport) {
-      return;
-    }
+    if (!onGenerateReport || isLoading) return;
 
     setIsLoading(true);
     setError(null);
     setReport(null);
 
     try {
-      const result =
-        await onGenerateReport(
-          simulation.id,
-        );
-
+      const result = await onGenerateReport(simulation.id);
       setReport(result);
     } catch (requestError) {
       setError(
@@ -201,9 +178,7 @@ export function AiAssistantPanel({
   }
 
   async function generateQuestion() {
-    if (!onGenerateQuestion) {
-      return;
-    }
+    if (!onGenerateQuestion || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -212,11 +187,10 @@ export function AiAssistantPanel({
     setFeedback(null);
 
     try {
-      const result =
-        await onGenerateQuestion(
-          simulation.id,
-          practiceLevel,
-        );
+      const result = await onGenerateQuestion(
+        simulation.id,
+        practiceLevel,
+      );
 
       setQuestion(result);
     } catch (requestError) {
@@ -233,7 +207,9 @@ export function AiAssistantPanel({
   async function evaluateAnswer() {
     if (
       !onEvaluateAnswer ||
-      !question
+      !question ||
+      isLoading ||
+      feedback
     ) {
       return;
     }
@@ -241,9 +217,7 @@ export function AiAssistantPanel({
     const trimmedAnswer = answer.trim();
 
     if (!trimmedAnswer) {
-      setError(
-        "Enter an answer before submitting.",
-      );
+      setError("Enter an answer before submitting.");
       return;
     }
 
@@ -252,12 +226,11 @@ export function AiAssistantPanel({
     setFeedback(null);
 
     try {
-      const result =
-        await onEvaluateAnswer(
-          simulation.id,
-          question,
-          trimmedAnswer,
-        );
+      const result = await onEvaluateAnswer(
+        simulation.id,
+        question.question_id,
+        trimmedAnswer,
+      );
 
       setFeedback(result);
     } catch (requestError) {
@@ -279,20 +252,15 @@ export function AiAssistantPanel({
       <div className={styles.heading}>
         <div>
           <p className={styles.eyebrow}>
-            AI Network Analysis Assistant
+            Network Analysis Assistant
           </p>
-
-          <h3
-            id={`ai-assistant-title-${simulation.id}`}
-          >
+          <h3 id={`ai-assistant-title-${simulation.id}`}>
             Analyze this run
           </h3>
-
           <p className={styles.description}>
             Use the stored simulation as grounded
-            context for explanation,
-            troubleshooting, technical reporting
-            and guided practice.
+            context for explanation, troubleshooting,
+            technical reporting and guided practice.
           </p>
         </div>
 
@@ -304,56 +272,52 @@ export function AiAssistantPanel({
       <div className={styles.actions}>
         <button
           type="button"
+          disabled={isLoading}
           className={
             activeMode === "explain"
               ? styles.primaryAction
               : undefined
           }
-          onClick={() =>
-            selectMode("explain")
-          }
+          onClick={() => selectMode("explain")}
         >
           Explain
         </button>
 
         <button
           type="button"
+          disabled={isLoading}
           className={
             activeMode === "troubleshoot"
               ? styles.primaryAction
               : undefined
           }
-          onClick={() =>
-            selectMode("troubleshoot")
-          }
+          onClick={() => selectMode("troubleshoot")}
         >
           Troubleshoot
         </button>
 
         <button
           type="button"
+          disabled={isLoading}
           className={
             activeMode === "report"
               ? styles.primaryAction
               : undefined
           }
-          onClick={() =>
-            selectMode("report")
-          }
+          onClick={() => selectMode("report")}
         >
           Generate report
         </button>
 
         <button
           type="button"
+          disabled={isLoading}
           className={
             activeMode === "questions"
               ? styles.primaryAction
               : undefined
           }
-          onClick={() =>
-            selectMode("questions")
-          }
+          onClick={() => selectMode("questions")}
         >
           Practice questions
         </button>
@@ -362,24 +326,20 @@ export function AiAssistantPanel({
       {activeMode === "explain" && (
         <div className={styles.modePanel}>
           <p className={styles.modeDescription}>
-            Generate a technical explanation based
-            on the exact packets, sequence numbers,
-            states and timing stored for this run.
+            Generate a technical explanation based on
+            the exact packets, sequence numbers, states
+            and timing stored for this run.
           </p>
 
           <button
             type="button"
             className={styles.primaryAction}
-            disabled={
-              isLoading || !canExplain
-            }
-            onClick={() =>
-              void explainRun()
-            }
+            disabled={isLoading || !canExplain}
+            onClick={() => void explainRun()}
             title={
               canExplain
                 ? undefined
-                : "AI backend integration is pending."
+                : "Backend integration is pending."
             }
           >
             {isLoading
@@ -389,40 +349,29 @@ export function AiAssistantPanel({
 
           {!canExplain && (
             <p className={styles.pending}>
-              AI backend integration is pending.
+              Backend integration is pending.
             </p>
           )}
 
-          {explanation &&
-            !isLoading && (
-              <article
-                className={styles.result}
-                aria-live="polite"
-              >
-                <div
-                  className={
-                    styles.resultHeading
-                  }
-                >
-                  <div>
-                    <span>
-                      AI explanation
-                    </span>
-
-                    <strong>
-                      TCP Three-Way Handshake
-                    </strong>
-                  </div>
-
-                  <span>
-                    Based on Run #
-                    {simulation.id}
-                  </span>
+          {explanation && !isLoading && (
+            <article
+              className={styles.result}
+              aria-live="polite"
+            >
+              <div className={styles.resultHeading}>
+                <div>
+                  <span>Run explanation</span>
+                  <strong>
+                    TCP Three-Way Handshake
+                  </strong>
                 </div>
-
-                <p>{explanation}</p>
-              </article>
-            )}
+                <span>Based on Run #{simulation.id}</span>
+              </div>
+              <p style={{ whiteSpace: "pre-wrap" }}>
+                {explanation}
+              </p>
+            </article>
+          )}
         </div>
       )}
 
@@ -432,45 +381,31 @@ export function AiAssistantPanel({
             <span>
               What problem are you investigating?
             </span>
-
             <textarea
               value={problemDescription}
               rows={4}
               maxLength={1000}
+              disabled={isLoading}
               placeholder="Example: Users report that connection establishment feels slow."
               onChange={(event) =>
-                setProblemDescription(
-                  event.target.value,
-                )
+                setProblemDescription(event.target.value)
               }
             />
           </label>
 
-          <div
-            className={
-              styles.troubleshootFooter
-            }
-          >
+          <div className={styles.troubleshootFooter}>
             <span>
               {problemDescription.length}/1000
             </span>
-
             <button
               type="button"
-              className={
-                styles.primaryAction
-              }
-              disabled={
-                isLoading ||
-                !canTroubleshoot
-              }
-              onClick={() =>
-                void troubleshootRun()
-              }
+              className={styles.primaryAction}
+              disabled={isLoading || !canTroubleshoot}
+              onClick={() => void troubleshootRun()}
               title={
                 canTroubleshoot
                   ? undefined
-                  : "AI backend integration is pending."
+                  : "Backend integration is pending."
               }
             >
               {isLoading
@@ -486,33 +421,22 @@ export function AiAssistantPanel({
             </p>
           )}
 
-          {troubleshootingResult &&
-            !isLoading && (
-              <article
-                className={styles.result}
-                aria-live="polite"
-              >
-                <div
-                  className={
-                    styles.resultHeading
-                  }
-                >
-                  <div>
-                    <span>
-                      Troubleshooting analysis
-                    </span>
-
-                    <strong>
-                      Run #{simulation.id}
-                    </strong>
-                  </div>
+          {troubleshootingResult && !isLoading && (
+            <article
+              className={styles.result}
+              aria-live="polite"
+            >
+              <div className={styles.resultHeading}>
+                <div>
+                  <span>Troubleshooting analysis</span>
+                  <strong>Run #{simulation.id}</strong>
                 </div>
-
-                <p>
-                  {troubleshootingResult}
-                </p>
-              </article>
-            )}
+              </div>
+              <p style={{ whiteSpace: "pre-wrap" }}>
+                {troubleshootingResult}
+              </p>
+            </article>
+          )}
         </div>
       )}
 
@@ -526,7 +450,6 @@ export function AiAssistantPanel({
 
           <div className={styles.reportPreview}>
             <span>Report structure</span>
-
             <ol>
               <li>Analysis objective</li>
               <li>Simulation details</li>
@@ -544,17 +467,12 @@ export function AiAssistantPanel({
           <button
             type="button"
             className={styles.primaryAction}
-            disabled={
-              isLoading ||
-              !canGenerateReport
-            }
-            onClick={() =>
-              void generateReport()
-            }
+            disabled={isLoading || !canGenerateReport}
+            onClick={() => void generateReport()}
             title={
               canGenerateReport
                 ? undefined
-                : "AI backend integration is pending."
+                : "Backend integration is pending."
             }
           >
             {isLoading
@@ -573,26 +491,17 @@ export function AiAssistantPanel({
               className={`${styles.result} ${styles.reportResult}`}
               aria-live="polite"
             >
-              <div
-                className={
-                  styles.resultHeading
-                }
-              >
+              <div className={styles.resultHeading}>
                 <div>
-                  <span>
-                    Network Analysis Report
-                  </span>
-
+                  <span>Network Analysis Report</span>
                   <strong>
                     TCP Run #{simulation.id}
                   </strong>
                 </div>
               </div>
-
               <div
-                className={
-                  styles.reportContent
-                }
+                className={styles.reportContent}
+                style={{ whiteSpace: "pre-wrap" }}
               >
                 {report}
               </div>
@@ -608,48 +517,34 @@ export function AiAssistantPanel({
             and events from this stored simulation.
           </p>
 
-          <label
-            className={styles.practiceLevel}
-          >
+          <label className={styles.practiceLevel}>
             <span>Practice level</span>
-
             <select
               value={practiceLevel}
+              disabled={isLoading}
               onChange={(event) =>
-                setPracticeLevel(
-                  event.target
-                    .value as PracticeLevel,
+                changePracticeLevel(
+                  event.target.value as PracticeLevel,
                 )
               }
             >
-              <option value="beginner">
-                Beginner
-              </option>
-
+              <option value="beginner">Beginner</option>
               <option value="intermediate">
                 Intermediate
               </option>
-
-              <option value="interview">
-                Interview
-              </option>
+              <option value="advanced">Advanced</option>
             </select>
           </label>
 
           <button
             type="button"
             className={styles.primaryAction}
-            disabled={
-              isLoading ||
-              !canGenerateQuestion
-            }
-            onClick={() =>
-              void generateQuestion()
-            }
+            disabled={isLoading || !canGenerateQuestion}
+            onClick={() => void generateQuestion()}
             title={
               canGenerateQuestion
                 ? undefined
-                : "AI backend integration is pending."
+                : "Backend integration is pending."
             }
           >
             {isLoading
@@ -661,72 +556,81 @@ export function AiAssistantPanel({
 
           {!canGenerateQuestion && (
             <p className={styles.pending}>
-              Practice backend integration is
-              pending.
+              Practice backend integration is pending.
             </p>
           )}
 
           {question && (
-            <div
-              className={
-                styles.questionCard
-              }
-            >
-              <span>Question</span>
+            <div className={styles.questionCard}>
+              <span>
+                {question.level.charAt(0).toUpperCase() +
+                  question.level.slice(1)}{" "}
+                question
+              </span>
 
-              <strong>{question}</strong>
+              <strong>{question.question}</strong>
 
-              <label
-                className={styles.field}
-              >
+              <label className={styles.field}>
                 <span>Your answer</span>
-
                 <textarea
                   value={answer}
                   rows={3}
-                  maxLength={1000}
+                  maxLength={2000}
+                  disabled={isLoading || feedback !== null}
                   placeholder="Enter your answer..."
                   onChange={(event) =>
-                    setAnswer(
-                      event.target.value,
-                    )
+                    setAnswer(event.target.value)
                   }
                 />
               </label>
 
               <button
                 type="button"
-                className={
-                  styles.primaryAction
-                }
+                className={styles.primaryAction}
                 disabled={
                   isLoading ||
-                  !canEvaluateAnswer
+                  !canEvaluateAnswer ||
+                  feedback !== null
                 }
-                onClick={() =>
-                  void evaluateAnswer()
-                }
+                onClick={() => void evaluateAnswer()}
               >
                 {isLoading
                   ? "Checking answer…"
-                  : "Check answer"}
+                  : feedback
+                    ? "Answer checked"
+                    : "Check answer"}
               </button>
 
-              {feedback &&
-                !isLoading && (
-                  <div
-                    className={
-                      styles.feedback
-                    }
-                    aria-live="polite"
-                  >
-                    <span>
-                      AI feedback
-                    </span>
+              {!canEvaluateAnswer && (
+                <p className={styles.pending}>
+                  Answer evaluation is not available.
+                </p>
+              )}
 
-                    <p>{feedback}</p>
-                  </div>
-                )}
+              {feedback && !isLoading && (
+                <div
+                  className={styles.feedback}
+                  aria-live="polite"
+                >
+                  <strong>
+                    {feedback.is_correct
+                      ? "Correct answer!"
+                      : "Incorrect answer"}
+                  </strong>
+
+                  <p>{feedback.feedback}</p>
+
+                  <p>
+                    <strong>Correct answer: </strong>
+                    {feedback.correct_answer}
+                  </p>
+
+                  <p style={{ whiteSpace: "pre-wrap" }}>
+                    <strong>Explanation: </strong>
+                    {feedback.explanation}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -741,7 +645,6 @@ export function AiAssistantPanel({
           <strong>
             Analyzing the stored simulation…
           </strong>
-
           <span>
             Stored simulation data remains the
             source of truth.
@@ -750,14 +653,8 @@ export function AiAssistantPanel({
       )}
 
       {error && (
-        <div
-          className={styles.error}
-          role="alert"
-        >
-          <strong>
-            AI analysis unavailable
-          </strong>
-
+        <div className={styles.error} role="alert">
+          <strong>Analysis unavailable</strong>
           <span>{error}</span>
         </div>
       )}

@@ -5,6 +5,10 @@ import type {
   AiTroubleshootResponse,
   AiReportRequest,
   AiReportResponse,
+  AiPracticeQuestionRequest,
+  AiPracticeQuestionResponse,
+  AiPracticeEvaluateRequest,
+  AiPracticeEvaluateResponse,
 } from "@/types/ai";
 import type { ProtocolDefinition } from "@/types/protocol";
 import type {
@@ -279,6 +283,30 @@ export function generateAiReport(
 ): Promise<AiReportResponse> {
   return apiRequest<AiReportResponse>(
     "/api/v1/ai/report",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+  );
+}
+
+export function generatePracticeQuestion(
+  request: AiPracticeQuestionRequest,
+): Promise<AiPracticeQuestionResponse> {
+  return apiRequest<AiPracticeQuestionResponse>(
+    "/api/v1/ai/practice/question",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+  );
+}
+
+export function evaluatePracticeAnswer(
+  request: AiPracticeEvaluateRequest,
+): Promise<AiPracticeEvaluateResponse> {
+  return apiRequest<AiPracticeEvaluateResponse>(
+    "/api/v1/ai/practice/evaluate",
     {
       method: "POST",
       body: JSON.stringify(request),
