@@ -1,18 +1,26 @@
+
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 import { AiAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { PrimaryNavigation } from "@/components/primary-navigation";
 import { HandshakeVisualizer } from "@/components/tcp/handshake-visualizer";
 import {
+  evaluatePracticeAnswer,
+  explainSimulation,
+  generateAiReport,
+  generatePracticeQuestion,
   getSimulation,
   listSimulations,
+  troubleshootSimulation,
 } from "@/lib/api-client";
+import type {
+  AiPracticeEvaluateResponse,
+  AiPracticeQuestionResponse,
+  PracticeLevel,
+} from "@/types/ai";
 import type {
   SimulationListResponse,
   SimulationRun,
@@ -23,24 +31,18 @@ import styles from "./simulation-history.module.css";
 const PAGE_SIZE = 10;
 
 function formatDate(dateValue: string): string {
-  return new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  ).format(new Date(dateValue));
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(dateValue));
 }
 
-function formatParameterName(
-  parameterName: string,
-): string {
+function formatParameterName(parameterName: string): string {
   return parameterName
     .split("_")
     .map(
       (part) =>
-        part.charAt(0).toUpperCase() +
-        part.slice(1),
+        part.charAt(0).toUpperCase() + part.slice(1),
     )
     .join(" ");
 }
@@ -49,22 +51,16 @@ export function SimulationHistory() {
   const [skip, setSkip] = useState(0);
 
   const [history, setHistory] =
-    useState<SimulationListResponse | null>(
-      null,
-    );
+    useState<SimulationListResponse | null>(null);
 
-  const [
-    selectedSimulation,
-    setSelectedSimulation,
-  ] = useState<SimulationRun | null>(null);
+  const [selectedSimulation, setSelectedSimulation] =
+    useState<SimulationRun | null>(null);
 
   const [isListLoading, setIsListLoading] =
     useState(true);
 
-  const [
-    isDetailLoading,
-    setIsDetailLoading,
-  ] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] =
+    useState(false);
 
   const [error, setError] =
     useState<string | null>(null);
@@ -75,10 +71,7 @@ export function SimulationHistory() {
     async function loadHistory() {
       try {
         const historyResponse =
-          await listSimulations(
-            skip,
-            PAGE_SIZE,
-          );
+          await listSimulations(skip, PAGE_SIZE);
 
         if (!active) {
           return;
@@ -113,12 +106,8 @@ export function SimulationHistory() {
     };
   }, [skip]);
 
-  async function selectSimulation(
-    simulationId: number,
-  ) {
-    if (
-      selectedSimulation?.id === simulationId
-    ) {
+  async function selectSimulation(simulationId: number) {
+    if (selectedSimulation?.id === simulationId) {
       return;
     }
 
@@ -126,9 +115,7 @@ export function SimulationHistory() {
     setError(null);
 
     try {
-      const simulation =
-        await getSimulation(simulationId);
-
+      const simulation = await getSimulation(simulationId);
       setSelectedSimulation(simulation);
     } catch (requestError) {
       setError(
@@ -145,6 +132,57 @@ export function SimulationHistory() {
     setIsListLoading(true);
     setSelectedSimulation(null);
     setSkip(newSkip);
+  }
+
+  async function explainRun(
+    simulationId: number,
+  ): Promise<string> {
+    const response = await explainSimulation(simulationId);
+    return response.content;
+  }
+
+  async function troubleshootRun(
+    simulationId: number,
+    problemDescription: string,
+  ): Promise<string> {
+    const response = await troubleshootSimulation({
+      simulation_id: simulationId,
+      problem_description: problemDescription,
+    });
+
+    return response.content;
+  }
+
+  async function generateReport(
+    simulationId: number,
+  ): Promise<string> {
+    const response = await generateAiReport({
+      simulation_id: simulationId,
+    });
+
+    return response.content;
+  }
+
+  async function generateQuestion(
+    simulationId: number,
+    level: PracticeLevel,
+  ): Promise<AiPracticeQuestionResponse> {
+    return generatePracticeQuestion({
+      simulation_id: simulationId,
+      level,
+    });
+  }
+
+  async function evaluateAnswer(
+    simulationId: number,
+    questionId: string,
+    answer: string,
+  ): Promise<AiPracticeEvaluateResponse> {
+    return evaluatePracticeAnswer({
+      simulation_id: simulationId,
+      question_id: questionId,
+      answer,
+    });
   }
 
   const total = history?.total ?? 0;
@@ -166,10 +204,7 @@ export function SimulationHistory() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link
-          className={styles.brand}
-          href="/"
-        >
+        <Link className={styles.brand} href="/">
           <b>P</b> protocol<span>lab</span>
         </Link>
 
@@ -195,10 +230,7 @@ export function SimulationHistory() {
       </section>
 
       {error && (
-        <p
-          className={styles.error}
-          role="alert"
-        >
+        <p className={styles.error} role="alert">
           {error}
         </p>
       )}
@@ -246,34 +278,25 @@ export function SimulationHistory() {
                   key={simulation.id}
                   type="button"
                   className={`${styles.runItem} ${
-                    selectedSimulation?.id ===
-                    simulation.id
+                    selectedSimulation?.id === simulation.id
                       ? styles.runItemActive
                       : ""
                   }`}
                   onClick={() =>
-                    void selectSimulation(
-                      simulation.id,
-                    )
+                    void selectSimulation(simulation.id)
                   }
                 >
-                  <span
-                    className={styles.runNumber}
-                  >
+                  <span className={styles.runNumber}>
                     #{simulation.id}
                   </span>
 
-                  <span
-                    className={styles.runSummary}
-                  >
+                  <span className={styles.runSummary}>
                     <strong>
                       {simulation.protocol.toUpperCase()}
                     </strong>
 
                     <time
-                      dateTime={
-                        simulation.created_at
-                      }
+                      dateTime={simulation.created_at}
                     >
                       {formatDate(
                         simulation.created_at,
@@ -281,9 +304,7 @@ export function SimulationHistory() {
                     </time>
                   </span>
 
-                  <span
-                    className={styles.runStatus}
-                  >
+                  <span className={styles.runStatus}>
                     {simulation.status}
                   </span>
                 </button>
@@ -295,15 +316,11 @@ export function SimulationHistory() {
             <button
               type="button"
               disabled={
-                !hasPreviousPage ||
-                isListLoading
+                !hasPreviousPage || isListLoading
               }
               onClick={() =>
                 changePage(
-                  Math.max(
-                    0,
-                    skip - PAGE_SIZE,
-                  ),
+                  Math.max(0, skip - PAGE_SIZE),
                 )
               }
             >
@@ -311,15 +328,13 @@ export function SimulationHistory() {
             </button>
 
             <span>
-              Page {currentPage} of{" "}
-              {totalPages}
+              Page {currentPage} of {totalPages}
             </span>
 
             <button
               type="button"
               disabled={
-                !hasNextPage ||
-                isListLoading
+                !hasNextPage || isListLoading
               }
               onClick={() =>
                 changePage(skip + PAGE_SIZE)
@@ -336,25 +351,16 @@ export function SimulationHistory() {
         >
           {selectedSimulation ? (
             <>
-              <div
-                className={
-                  styles.detailHeading
-                }
-              >
+              <div className={styles.detailHeading}>
                 <div>
                   <p>Selected simulation</p>
 
                   <h2>
-                    Run #
-                    {selectedSimulation.id}
+                    Run #{selectedSimulation.id}
                   </h2>
                 </div>
 
-                <div
-                  className={
-                    styles.detailMetadata
-                  }
-                >
+                <div className={styles.detailMetadata}>
                   <span>
                     {selectedSimulation.scenario_id
                       ? `Scenario #${selectedSimulation.scenario_id}`
@@ -374,32 +380,20 @@ export function SimulationHistory() {
               </div>
 
               <HandshakeVisualizer
-                simulation={
-                  selectedSimulation
-                }
+                simulation={selectedSimulation}
                 emptyMessage="This simulation has no result."
               />
 
-              <div
-                className={
-                  styles.parametersPanel
-                }
-              >
+              <div className={styles.parametersPanel}>
                 <h3>Input parameters</h3>
 
-                <div
-                  className={
-                    styles.parameterGrid
-                  }
-                >
+                <div className={styles.parameterGrid}>
                   {Object.entries(
                     selectedSimulation.input_parameters,
                   ).map(([name, value]) => (
                     <div key={name}>
                       <span>
-                        {formatParameterName(
-                          name,
-                        )}
+                        {formatParameterName(name)}
                       </span>
 
                       <strong>
@@ -413,14 +407,15 @@ export function SimulationHistory() {
               <AiAssistantPanel
                 key={selectedSimulation.id}
                 simulation={selectedSimulation}
+                onExplain={explainRun}
+                onTroubleshoot={troubleshootRun}
+                onGenerateReport={generateReport}
+                onGenerateQuestion={generateQuestion}
+                onEvaluateAnswer={evaluateAnswer}
               />
             </>
           ) : (
-            <div
-              className={
-                styles.noSelection
-              }
-            >
+            <div className={styles.noSelection}>
               {isListLoading
                 ? "Loading simulation history…"
                 : "Select a simulation to inspect it."}
@@ -428,11 +423,7 @@ export function SimulationHistory() {
           )}
 
           {isDetailLoading && (
-            <div
-              className={
-                styles.detailLoading
-              }
-            >
+            <div className={styles.detailLoading}>
               Loading selected run…
             </div>
           )}
