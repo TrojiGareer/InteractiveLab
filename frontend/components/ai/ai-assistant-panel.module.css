@@ -1,0 +1,389 @@
+.panel {
+  margin-top: 1rem;
+  padding: 1.35rem;
+  border: 1px solid #dce2ef;
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(82, 111, 246, 0.07),
+      rgba(255, 255, 255, 0)
+    ),
+    #ffffff;
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.heading h3 {
+  margin: 0.3rem 0 0;
+  font-size: 1.15rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #526ff6;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.description {
+  max-width: 36rem;
+  margin: 0.55rem 0 0;
+  color: #737e96;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.runBadge {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: #eef1ff;
+  color: #526ff6;
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.actions {
+  margin-top: 1.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.actions button {
+  min-height: 2.55rem;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid #d8deec;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #39445f;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.actions button:hover:not(:disabled) {
+  border-color: #526ff6;
+  color: #526ff6;
+}
+
+.actions button:focus-visible {
+  outline: 3px solid rgba(82, 111, 246, 0.25);
+  outline-offset: 2px;
+}
+
+.actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.actions .primaryAction {
+  border-color: #526ff6;
+  background: #526ff6;
+  color: #ffffff;
+}
+
+.actions .primaryAction:hover:not(:disabled) {
+  background: #405de6;
+  color: #ffffff;
+}
+
+.loading,
+.error,
+.result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+}
+
+.loading {
+  display: grid;
+  gap: 0.3rem;
+  background: #f4f6ff;
+  color: #526ff6;
+}
+
+.loading span {
+  color: #737e96;
+  font-size: 0.82rem;
+}
+
+.error {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid #ffc7c7;
+  background: #fff2f2;
+  color: #9b2525;
+}
+
+.error span {
+  font-size: 0.82rem;
+}
+
+.result {
+  border: 1px solid #dfe4f0;
+  background: #ffffff;
+}
+
+.resultHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #edf0f6;
+}
+
+.resultHeading div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.resultHeading span {
+  color: #8791a7;
+  font-size: 0.72rem;
+}
+
+.resultHeading strong {
+  font-size: 0.9rem;
+}
+
+.result > p {
+  margin: 1rem 0 0;
+  color: #39445f;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 700px) {
+  .heading,
+  .resultHeading {
+    flex-direction: column;
+  }
+
+  .actions {
+    display: grid;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
+
+.pending {
+  margin: 0.75rem 0 0;
+  color: #8791a7;
+  font-size: 0.78rem;
+}
+
+.modePanel {
+  margin-top: 1rem;
+}
+
+.modeDescription {
+  margin: 0 0 0.85rem;
+  color: #737e96;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field > span {
+  color: #39445f;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 7rem;
+  padding: 0.8rem;
+  border: 1px solid #d8deec;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #39445f;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.field textarea:focus {
+  border-color: #526ff6;
+  outline: 3px solid rgba(82, 111, 246, 0.15);
+}
+
+.troubleshootFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.65rem;
+}
+
+.troubleshootFooter > span {
+  color: #8791a7;
+  font-size: 0.72rem;
+}
+
+.modePanel > .primaryAction,
+.troubleshootFooter > .primaryAction {
+  min-height: 2.55rem;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid #526ff6;
+  border-radius: 0.65rem;
+  background: #526ff6;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modePanel > .primaryAction:disabled,
+.troubleshootFooter > .primaryAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.reportPreview {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #e3e7f1;
+  border-radius: 0.75rem;
+  background: #f8f9fc;
+}
+
+.reportPreview > span {
+  display: block;
+  margin-bottom: 0.65rem;
+  color: #526ff6;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.reportPreview ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #59647c;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.reportResult {
+  margin-top: 1rem;
+}
+
+.reportContent {
+  margin-top: 1rem;
+  color: #39445f;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.practiceLevel {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 18rem;
+  margin-bottom: 1rem;
+}
+
+.practiceLevel > span {
+  color: #39445f;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.practiceLevel select {
+  min-height: 2.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d8deec;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #39445f;
+  font: inherit;
+}
+
+.practiceLevel select:focus {
+  border-color: #526ff6;
+  outline: 3px solid rgba(82, 111, 246, 0.15);
+}
+
+.questionCard {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #dfe4f0;
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.questionCard > span {
+  color: #526ff6;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.questionCard > strong {
+  color: #39445f;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.questionCard > .primaryAction {
+  width: fit-content;
+  min-height: 2.55rem;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid #526ff6;
+  border-radius: 0.65rem;
+  background: #526ff6;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.questionCard > .primaryAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.feedback {
+  padding: 0.9rem;
+  border: 1px solid #dfe4f0;
+  border-radius: 0.65rem;
+  background: #f8f9fc;
+}
+
+.feedback > span {
+  color: #526ff6;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.feedback p {
+  margin: 0.5rem 0 0;
+  color: #39445f;
+  line-height: 1.6;
+}

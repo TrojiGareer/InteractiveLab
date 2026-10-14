@@ -1,20 +1,24 @@
 # =========================
 # Backend (Python)
 # =========================
+.venv/
 backend/venv/
 backend/.venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 # =========================
 # Frontend (Next.js)
 # =========================
 frontend/node_modules/
+node_modules/
 frontend/.pnp
 frontend/.pnp.*
 frontend/.yarn/*
 frontend/coverage/
 frontend/.next/
+.next/
 frontend/out/
 frontend/build/
 
@@ -36,3 +40,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+protocol-working-tree-*.zip
+protocol-backup*.zip
+venv_test/
+*.zip

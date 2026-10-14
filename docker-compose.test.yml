@@ -1,0 +1,25 @@
+services:
+  db-test:
+    image: postgres:17-alpine
+    container_name: interactivelab-db-test
+
+    environment:
+      POSTGRES_DB: interactive_lab_test
+      POSTGRES_USER: interactive_test
+      POSTGRES_PASSWORD: interactive_test
+
+    ports:
+      - "5433:5432"
+
+    tmpfs:
+      - /var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U interactive_test -d interactive_lab_test"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5

@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InteractiveLab frontend
 
-## Getting Started
+The frontend is an interactive view of the backend's TCP three-way handshake simulator and saved scenario library. FastAPI remains the source of truth for TCP parameter defaults and limits, simulation results, and persisted history.
 
-First, run the development server:
+## Routes
+
+- `/` - configure and run a direct TCP three-way-handshake simulation;
+- `/scenarios` - save, edit, run, and delete reusable TCP parameter sets;
+- `/simulations` - inspect immutable simulation history and replay its handshake trace.
+
+Running a saved scenario creates a new immutable simulation run. Deleting a scenario removes only its editable configuration: existing historical runs remain available and lose their scenario association.
+
+## Handshake playback
+
+Every completed TCP run can be played step by step as SYN, SYN + ACK, and ACK. The frontend has Play trace, Pause, Resume, Restart, and replay controls; replay uses the saved run snapshot and does not request or persist another simulation.
+
+- **Demo time** uses a readable 700 ms presentation duration for each packet hop.
+- **Real time** uses the simulated event timings returned by the API (or the saved latency snapshot when timing is unavailable).
+
+The displayed **Simulated total time** always comes from the backend result, so Demo time never changes TCP values, timestamps, or persisted data. The direct simulator also includes local Client and Server host-appearance selectors. Those choices are visual-only, are not stored in local storage, and are never sent to the API.
+
+## Environment
+
+`NEXT_PUBLIC_API_URL` is required when the API is not served from `http://localhost:8000`. It defaults to that local URL, and must be set to the public API URL before a cloud build.
+
+## Run the complete stack with Docker
+
+From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The API is available at [http://localhost:8000](http://localhost:8000), and its documentation is at [http://localhost:8000/docs](http://localhost:8000/docs).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Frontend-only development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use Node.js 22, start the backend and database, then run this from `frontend/`:
 
-## Learn More
+```bash
+npm ci
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+The backend allows the local frontend origins through `CORS_ORIGINS` in `docker-compose.yml`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Validation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+From `frontend/`:
 
-## Deploy on Vercel
+```bash
+npm run lint
+npm run test
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The frontend tests use Node 22's native TypeScript test runner and cover API client failures and 204 responses, scenario API workflows, protocol-driven parameter defaults and validation, trace playback, and deletion pagination boundaries.
